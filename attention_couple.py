@@ -53,6 +53,10 @@ class AttentionCouple:
     CATEGORY = "loaders"
 
     def attention_couple(self, model, positive, negative, mode):
+        print(f"[AttentionCouple] Starting attention_couple with mode: {mode}")
+        print(f"[AttentionCouple] Input positive length: {len(positive)}")
+        print(f"[AttentionCouple] Input negative length: {len(negative)}")
+        
         if mode == "Latent":
             return (model, positive, negative) # latent coupleの場合は何もしない
         
@@ -62,29 +66,80 @@ class AttentionCouple:
         new_positive = copy.deepcopy(positive)
         new_negative = copy.deepcopy(negative)
         
+        print(f"[AttentionCouple] After deepcopy - new_positive length: {len(new_positive)}")
+        print(f"[AttentionCouple] After deepcopy - new_negative length: {len(new_negative)}")
+        
         dtype = model.model.diffusion_model.dtype
         device = comfy.model_management.get_torch_device()
         
+        print(f"[AttentionCouple] Device: {device}, dtype: {dtype}")
+        
         # maskとcondをリストに格納する
-        for conditions in [new_negative, new_positive]:
+        for cond_idx, conditions in enumerate([new_negative, new_positive]):
+            cond_name = "negative" if cond_idx == 0 else "positive"
+            print(f"[AttentionCouple] Processing {cond_name} conditioning, length: {len(conditions)}")
+            
             conditions_masks = []
             conditions_conds = []
+            
             if len(conditions) != 1:
-                mask_norm = torch.stack([cond[1]["mask"].to(device, dtype=dtype) * cond[1]["mask_strength"] for cond in conditions])
-                mask_norm = mask_norm / mask_norm.sum(dim=0) # 合計が1になるように正規化(他が0の場合mask_strengthの効果がなくなる)
-                conditions_masks.extend([mask_norm[i] for i in range(mask_norm.shape[0])])
-                conditions_conds.extend([cond[0].to(device, dtype=dtype) for cond in conditions])
-                del conditions[0][1]["mask"] # latent coupleの無効化のため
-                del conditions[0][1]["mask_strength"]
+                print(f"[AttentionCouple] {cond_name} has multiple conditions ({len(conditions)}), processing masks...")
+                
+                # Log each condition before stacking
+                for i, cond in enumerate(conditions):
+                    print(f"[AttentionCouple] {cond_name}[{i}] structure: {type(cond)}, length: {len(cond) if hasattr(cond, '__len__') else 'N/A'}")
+                    if len(cond) > 1:
+                        print(f"[AttentionCouple] {cond_name}[{i}] metadata keys: {cond[1].keys()}")
+                        if 'mask' in cond[1]:
+                            mask_shape = cond[1]['mask'].shape
+                            print(f"[AttentionCouple] {cond_name}[{i}] mask shape: {mask_shape}")
+                            print(f"[AttentionCouple] {cond_name}[{i}] mask device: {cond[1]['mask'].device}")
+                            print(f"[AttentionCouple] {cond_name}[{i}] mask dtype: {cond[1]['mask'].dtype}")
+                        if 'mask_strength' in cond[1]:
+                            print(f"[AttentionCouple] {cond_name}[{i}] mask_strength: {cond[1]['mask_strength']}")
+                
+                try:
+                    print(f"[AttentionCouple] Attempting to stack {cond_name} masks...")
+                    mask_list = [cond[1]["mask"].to(device, dtype=dtype) * cond[1]["mask_strength"] for cond in conditions]
+                    print(f"[AttentionCouple] Created mask_list with {len(mask_list)} items")
+                    for i, mask in enumerate(mask_list):
+                        print(f"[AttentionCouple] mask_list[{i}] shape: {mask.shape}")
+                    
+                    mask_norm = torch.stack(mask_list)
+                    print(f"[AttentionCouple] Successfully stacked {cond_name} masks, result shape: {mask_norm.shape}")
+                    
+                    mask_norm = mask_norm / mask_norm.sum(dim=0) # 合計が1になるように正規化(他が0の場合mask_strengthの効果がなくなる)
+                    print(f"[AttentionCouple] Normalized {cond_name} masks")
+                    
+                    conditions_masks.extend([mask_norm[i] for i in range(mask_norm.shape[0])])
+                    conditions_conds.extend([cond[0].to(device, dtype=dtype) for cond in conditions])
+                    
+                    print(f"[AttentionCouple] {cond_name} conditions_masks length: {len(conditions_masks)}")
+                    print(f"[AttentionCouple] {cond_name} conditions_conds length: {len(conditions_conds)}")
+                    
+                    del conditions[0][1]["mask"] # latent coupleの無効化のため
+                    del conditions[0][1]["mask_strength"]
+                    print(f"[AttentionCouple] Cleaned up {cond_name} metadata")
+                    
+                except Exception as e:
+                    print(f"[AttentionCouple] ERROR stacking {cond_name} masks: {e}")
+                    raise e
+                    
             else:
+                print(f"[AttentionCouple] {cond_name} has single condition, using fallback")
                 conditions_masks = [False]
                 conditions_conds = [conditions[0][0].to(device, dtype=dtype)]
+                
             self.negative_positive_masks.append(conditions_masks)
             self.negative_positive_conds.append(conditions_conds)
+            
         self.conditioning_length = (len(new_negative), len(new_positive))
+        print(f"[AttentionCouple] Final conditioning_length: {self.conditioning_length}")
 
         new_model = model.clone()
         self.sdxl = hasattr(new_model.model.diffusion_model, "label_emb")
+        print(f"[AttentionCouple] SDXL model: {self.sdxl}")
+        
         if not self.sdxl:
             for id in [1,2,4,5,7,8]: # id of input_blocks that have cross attention
                 set_model_patch_replace(new_model, self.make_patch(new_model.model.diffusion_model.input_blocks[id][1].transformer_blocks[0].attn2), ("input", id))
@@ -103,6 +158,7 @@ class AttentionCouple:
                 for index in block_indices:
                     set_model_patch_replace(new_model, self.make_patch(new_model.model.diffusion_model.output_blocks[id][1].transformer_blocks[index].attn2), ("output", id, index))
         
+        print(f"[AttentionCouple] Model patching complete")
         return (new_model, [new_positive[0]], [new_negative[0]]) # pool outputは・・・後回し
     
     def make_patch(self, module):
