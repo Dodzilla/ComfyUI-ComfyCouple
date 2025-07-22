@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from .attention_couple import AttentionCouple
 
-class ComfyCouple:
+class LoopsComfyCouple:
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -99,9 +99,9 @@ class ComfyCouple:
         return AttentionCouple().attention_couple(model, positive_combined, negative, "Attention")
 
 NODE_CLASS_MAPPINGS = {
-    "Comfy Couple": ComfyCouple
+    "Loops Comfy Couple": LoopsComfyCouple
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "Comfy Couple": "Comfy Couple",
+    "Loops Comfy Couple": "Loops Comfy Couple",
 }
