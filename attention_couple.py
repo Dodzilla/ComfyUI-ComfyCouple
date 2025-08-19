@@ -172,8 +172,44 @@ class AttentionCouple:
             masks_uncond = get_masks_from_q(self.negative_positive_masks[0], q_list[0], extra_options["original_shape"])
             masks_cond = get_masks_from_q(self.negative_positive_masks[1], q_list[0], extra_options["original_shape"])
 
-            context_uncond = torch.cat([cond for cond in self.negative_positive_conds[0]], dim=0)
-            context_cond = torch.cat([cond for cond in self.negative_positive_conds[1]], dim=0)
+            # Handle potential shape mismatches in conditioning tensors
+            def safe_concat_conds(conds, cond_type):
+                if len(conds) == 1:
+                    return conds[0]
+                
+                # Check if all tensors have the same shape
+                shapes = [cond.shape for cond in conds]
+                print(f"[AttentionCouple] {cond_type} conditioning shapes: {shapes}")
+                
+                if len(set(shapes)) > 1:
+                    # Shapes don't match - need to handle this
+                    print(f"[AttentionCouple] Shape mismatch detected in {cond_type} conditioning")
+                    
+                    # Find the maximum sequence length (dimension 1)
+                    max_seq_len = max(cond.shape[1] for cond in conds)
+                    print(f"[AttentionCouple] Max sequence length: {max_seq_len}")
+                    
+                    # Pad shorter tensors to match the longest
+                    padded_conds = []
+                    for i, cond in enumerate(conds):
+                        if cond.shape[1] < max_seq_len:
+                            # Pad with zeros
+                            pad_size = max_seq_len - cond.shape[1]
+                            padding = torch.zeros(cond.shape[0], pad_size, cond.shape[2], 
+                                                dtype=cond.dtype, device=cond.device)
+                            padded_cond = torch.cat([cond, padding], dim=1)
+                            print(f"[AttentionCouple] Padded {cond_type}[{i}] from {cond.shape} to {padded_cond.shape}")
+                            padded_conds.append(padded_cond)
+                        else:
+                            padded_conds.append(cond)
+                    
+                    return torch.cat(padded_conds, dim=0)
+                else:
+                    # All shapes match, safe to concatenate
+                    return torch.cat(conds, dim=0)
+            
+            context_uncond = safe_concat_conds(self.negative_positive_conds[0], "uncond")
+            context_cond = safe_concat_conds(self.negative_positive_conds[1], "cond")
             
             k_uncond = module.to_k(context_uncond)
             k_cond = module.to_k(context_cond)
