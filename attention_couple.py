@@ -179,15 +179,15 @@ class AttentionCouple:
                 
                 # Check if all tensors have the same shape
                 shapes = [cond.shape for cond in conds]
-                print(f"[AttentionCouple] {cond_type} conditioning shapes: {shapes}")
+                # print(f"[AttentionCouple] {cond_type} conditioning shapes: {shapes}")
                 
                 if len(set(shapes)) > 1:
                     # Shapes don't match - need to handle this
-                    print(f"[AttentionCouple] Shape mismatch detected in {cond_type} conditioning")
+                    # print(f"[AttentionCouple] Shape mismatch detected in {cond_type} conditioning")
                     
                     # Find the maximum sequence length (dimension 1)
                     max_seq_len = max(cond.shape[1] for cond in conds)
-                    print(f"[AttentionCouple] Max sequence length: {max_seq_len}")
+                    # print(f"[AttentionCouple] Max sequence length: {max_seq_len}")
                     
                     # Pad shorter tensors to match the longest
                     padded_conds = []
@@ -198,7 +198,7 @@ class AttentionCouple:
                             padding = torch.zeros(cond.shape[0], pad_size, cond.shape[2], 
                                                 dtype=cond.dtype, device=cond.device)
                             padded_cond = torch.cat([cond, padding], dim=1)
-                            print(f"[AttentionCouple] Padded {cond_type}[{i}] from {cond.shape} to {padded_cond.shape}")
+                            # print(f"[AttentionCouple] Padded {cond_type}[{i}] from {cond.shape} to {padded_cond.shape}")
                             padded_conds.append(padded_cond)
                         else:
                             padded_conds.append(cond)
