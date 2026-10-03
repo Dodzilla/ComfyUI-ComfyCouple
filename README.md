@@ -55,3 +55,17 @@ Mask magic was replaced with comfy shortcut.
 - [**@pythongosssss**](https://github.com/pythongosssss) – [ComfyUI-Custom-Scripts](https://github.com/pythongosssss/ComfyUI-Custom-Scripts) used for capturing SVG for `README.md`
 - [**@Meina**](https://civitai.com/user/Meina) – [MeinaMix V11](https://civitai.com/models/7240/meinamix) used in example.
 - [**@Numeratic**](https://civitai.com/user/Numeratic) – [Genshin Impact All In One](https://civitai.com/models/108649?modelVersionId=116970) used in example.
+
+## Anima control support
+
+`FurgenAnimaLLLiteApply` uses the separately installed
+[kohya-ss/ComfyUI-Anima-LLLite](https://github.com/kohya-ss/ComfyUI-Anima-LLLite)
+node to apply its named-format ControlNet-LLLite checkpoints. Place weights in
+`models/controlnet`. It supports matching block counts and the verified 28→40
+mapping for depth-expanded Anima 2.9B/Nova. Inserted blocks receive no adapter;
+all trained modules load strictly. It copies the upstream function's globals
+for construction, avoiding global loader mutations. Other ComfyCouple nodes
+continue to work as before. Unknown layouts and partial checkpoints are rejected.
+
+Regional attention coupling is supplied by
+[Sen-sou/Comfyui-Anima-Regional-Conditioning](https://github.com/Sen-sou/Comfyui-Anima-Regional-Conditioning).
