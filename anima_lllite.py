@@ -37,7 +37,7 @@ class FurgenAnimaLLLiteApply:
     def INPUT_TYPES(cls):
         import folder_paths
         return {"required": {
-            "model": ("MODEL",), "lllite_name": (folder_paths.get_filename_list("controlnet"),),
+            "model": ("MODEL",), "control_net_name": (folder_paths.get_filename_list("controlnet"),),
             "image": ("IMAGE",),
             "strength": ("FLOAT", {"default": 1.0, "min": -10., "max": 10., "step": .01}),
             "start_percent": ("FLOAT", {"default": 0., "min": 0., "max": 1., "step": .001}),
@@ -49,7 +49,7 @@ class FurgenAnimaLLLiteApply:
     FUNCTION = "apply"
     CATEGORY = "loaders/Anima"
 
-    def apply(self, model, lllite_name, image, strength, start_percent, end_percent,
+    def apply(self, model, control_net_name, image, strength, start_percent, end_percent,
               preserve_wrapper=True, mask=None):
         import folder_paths
         import nodes
@@ -57,7 +57,7 @@ class FurgenAnimaLLLiteApply:
         from comfy.ldm.anima.model import Anima
         if not isinstance(model.model.diffusion_model, Anima):
             raise ValueError("FurgenAnimaLLLiteApply requires an Anima model")
-        path = folder_paths.get_full_path("controlnet", lllite_name)
+        path = folder_paths.get_full_path("controlnet", control_net_name)
         with safe_open(path, framework="pt", device="cpu") as weights:
             counts = {int(m[2]) for key in weights.keys() if (m := BLOCK.match(key.split('.')[0]))}
         if not counts:
@@ -86,7 +86,7 @@ class FurgenAnimaLLLiteApply:
         scope.update(ControlNetLLLiteDiT=MappedLLLite, load_lllite_weights=strict_load)
         # A function-local globals copy avoids modifying any other node or sampler.
         scoped_apply = types.FunctionType(apply.__code__, scope, apply.__name__, apply.__defaults__, apply.__closure__)
-        return scoped_apply(upstream(), model, lllite_name, image, strength, start_percent,
+        return scoped_apply(upstream(), model, control_net_name, image, strength, start_percent,
                             end_percent, preserve_wrapper, mask)
 
 

@@ -69,3 +69,6 @@ continue to work as before. Unknown layouts and partial checkpoints are rejected
 
 Regional attention coupling is supplied by
 [Sen-sou/Comfyui-Anima-Regional-Conditioning](https://github.com/Sen-sou/Comfyui-Anima-Regional-Conditioning).
+
+The adapter input is named `control_net_name`, matching the fleet's workflow
+parser so the selected weights are included in assignment dependencies.
