@@ -72,3 +72,13 @@ Regional attention coupling is supplied by
 
 The adapter input is named `control_net_name`, matching the fleet's workflow
 parser so the selected weights are included in assignment dependencies.
+
+`FurgenAnimaVACEApply` applies Anima VACE ControlNets (for example
+[TaihoC/Anima-ControlNet-VACE-Depth](https://huggingface.co/TaihoC/Anima-ControlNet-VACE-Depth))
+as a model patch: the guide image is VAE-encoded once, the control branch runs in
+a diffusion-model wrapper, and forward hooks add its hints to the mapped DiT
+blocks. A 28-block checkpoint lands on Nova's 40 blocks with the same mapping as
+the LLLite bridge (trained blocks 0/7/14/21 hook host blocks 0/10/20/31). The
+architecture follows TaihoC's sd-scripts trainer as ported to
+ComfyUI-Advanced-ControlNet (PineCookie, `fix/anima-vace-hardening`); no extra
+node pack is needed.
